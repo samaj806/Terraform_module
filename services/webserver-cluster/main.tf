@@ -67,7 +67,7 @@ data "aws_subnets" "default" {
 
 
 resource "aws_lb" "load-balancer" {
-  name               = "terraform-load-balancer"
+  name               = "${var.cluster_name}-load-balancer"
   load_balancer_type = "application"
   subnets            = data.aws_subnets.default.ids
   security_groups    = [aws_security_group.alb.id]
@@ -115,7 +115,7 @@ resource "aws_security_group_rule" "allow_all_outbound" {
 }
 
 resource "aws_lb_target_group" "asg" {
-  name     = "terraform-asg-example"
+  name     = "${var.cluster_name}-target-group-asg"
   port     = var.server_port
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.default.id
