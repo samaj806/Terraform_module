@@ -17,10 +17,6 @@ resource "aws_launch_template" "test_server" {
   lifecycle {
     create_before_destroy = true
   }
-
-  # tags = {
-  #   Name = "test-server"
-  # }
 }
 
 resource "aws_security_group" "internet" {
@@ -52,6 +48,16 @@ resource "aws_autoscaling_group" "server_increase" {
     value               = var.cluster_name
     propagate_at_launch = true
   }
+
+  dynamic "tag" {
+    for_each = var.custom_tags
+
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = true
+    }
+  }
 }
 
 data "aws_vpc" "default" {
@@ -67,7 +73,7 @@ data "aws_subnets" "default" {
 
 
 resource "aws_lb" "load-balancer" {
-  name               = "${var.cluster_name}-load-balancer"
+  name               = "${var.cluster_name}-lb"
   load_balancer_type = "application"
   subnets            = data.aws_subnets.default.ids
   security_groups    = [aws_security_group.alb.id]
