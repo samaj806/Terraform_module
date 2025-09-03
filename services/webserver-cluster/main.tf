@@ -1,6 +1,6 @@
 
 resource "aws_launch_template" "test_server" {
-  image_id      = "ami-020cba7c55df1f615"
+  image_id      = var.ami
   key_name      = "logkey"
   instance_type = var.instance_type
 
@@ -13,6 +13,7 @@ resource "aws_launch_template" "test_server" {
     DB_ADDRESS  = data.terraform_remote_state.db.outputs.address,
     DB_PORT     = data.terraform_remote_state.db.outputs.port,
     SERVER_PORT = var.server_port
+    SERVER_TEXT = var.server_text
   }))
   lifecycle {
     create_before_destroy = true
@@ -31,17 +32,31 @@ resource "aws_security_group" "internet" {
 }
 
 resource "aws_autoscaling_group" "server_increase" {
+  # Explicitly depend on the launch templates name so each time it's replaced, this ASG is also replaced"
+  name = "${var.cluster_name}-${aws_launch_template.test_server.name}"
+
   min_size            = var.min_size
   max_size            = var.max_size
   vpc_zone_identifier = data.aws_subnets.default.ids
+
+  # Wait for at least this many instances to pass health checks before considering the ASG deployment complete
+  min_elb_capacity = var.min_size
 
   launch_template {
     id      = aws_launch_template.test_server.id
     version = "$Latest"
   }
 
-  target_group_arns = [aws_lb_target_group.asg.arn]
-  health_check_type = "ELB"
+  # When replacing this ASG, create the replacement first, and only delete the original after
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  target_group_arns         = [aws_lb_target_group.asg.arn]
+  health_check_type         = "ELB"
+  health_check_grace_period = 60
+
+  capacity_rebalance = true
 
   tag {
     key                 = "Name"
@@ -58,6 +73,26 @@ resource "aws_autoscaling_group" "server_increase" {
       propagate_at_launch = true
     }
   }
+}
+
+resource "aws_autoscaling_schedule" "scale_out_during_business_hours" {
+  count                  = var.enable_autoscaling ? 1 : 0
+  scheduled_action_name  = "${var.cluster_name}-scale-out-during-business-hours"
+  min_size               = 2
+  max_size               = 10
+  desired_capacity       = 10
+  recurrence             = "0 9 * * *"
+  autoscaling_group_name = aws_autoscaling_group.server_increase
+}
+
+resource "aws_autoscaling_schedule" "scale_in_at_night" {
+  count                  = var.enable_autoscaling ? 1 : 0
+  scheduled_action_name  = "${var.cluster_name}-scale-in-at-night"
+  min_size               = 2
+  max_size               = 2
+  desired_capacity       = 4
+  recurrence             = "0 17 * * *"
+  autoscaling_group_name = aws_autoscaling_group.server_increase
 }
 
 data "aws_vpc" "default" {
@@ -130,10 +165,10 @@ resource "aws_lb_target_group" "asg" {
     path                = "/"
     protocol            = "HTTP"
     matcher             = "200"
-    interval            = 15
-    timeout             = 3
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
   }
 }
 

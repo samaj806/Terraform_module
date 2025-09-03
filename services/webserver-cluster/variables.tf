@@ -42,3 +42,22 @@ variable "custom_tags" {
   type        = map(string)
   default     = {}
 }
+
+# Input variable use to verify whether auto-scaling should be enable
+
+variable "enable_autoscaling" {
+  description = "If set to true enable auto-scaling"
+  type        = bool
+}
+
+variable "ami" {
+  description = "The AMI to run in the cluster"
+  type        = string
+  default     = "ami-020cba7c55df1f615"
+}
+
+variable "server_text" {
+  description = "The text the web server should return"
+  type        = string
+  default     = "Hello world, checking for zero downtime deployment."
+}
