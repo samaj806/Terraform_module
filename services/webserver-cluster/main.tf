@@ -83,7 +83,7 @@ resource "aws_autoscaling_schedule" "scale_out_during_business_hours" {
   max_size               = 10
   desired_capacity       = 10
   recurrence             = "0 9 * * *"
-  autoscaling_group_name = aws_autoscaling_group.server_increase
+  autoscaling_group_name = aws_autoscaling_group.scale_out_during_business_hours
 }
 
 resource "aws_autoscaling_schedule" "scale_in_at_night" {
@@ -94,7 +94,7 @@ resource "aws_autoscaling_schedule" "scale_in_at_night" {
   max_size               = 2
   desired_capacity       = 4
   recurrence             = "0 17 * * *"
-  autoscaling_group_name = aws_autoscaling_group.server_increase
+  autoscaling_group_name = aws_autoscaling_group.scale-in-at-night
 }
 
 data "aws_vpc" "default" {
