@@ -1,7 +1,7 @@
 
 resource "aws_launch_template" "test_server" {
+  name_prefix   = "${var.cluster_name}-"
   image_id      = var.ami
-  key_name      = "logkey"
   instance_type = var.instance_type
 
   network_interfaces {
@@ -33,7 +33,7 @@ resource "aws_security_group" "internet" {
 
 resource "aws_autoscaling_group" "server_increase" {
   # Explicitly depend on the launch templates name so each time it's replaced, this ASG is also replaced"
-  name = "${var.cluster_name}-${aws_launch_template.test_server.name}"
+  name = "${var.cluster_name}-${aws_launch_template.test_server.latest_version}"
 
   min_size            = var.min_size
   max_size            = var.max_size
@@ -77,6 +77,7 @@ resource "aws_autoscaling_group" "server_increase" {
 
 resource "aws_autoscaling_schedule" "scale_out_during_business_hours" {
   count                  = var.enable_autoscaling ? 1 : 0
+  
   scheduled_action_name  = "${var.cluster_name}-scale-out-during-business-hours"
   min_size               = 2
   max_size               = 10
@@ -87,6 +88,7 @@ resource "aws_autoscaling_schedule" "scale_out_during_business_hours" {
 
 resource "aws_autoscaling_schedule" "scale_in_at_night" {
   count                  = var.enable_autoscaling ? 1 : 0
+
   scheduled_action_name  = "${var.cluster_name}-scale-in-at-night"
   min_size               = 2
   max_size               = 2
